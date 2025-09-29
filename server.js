@@ -1,7 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { add } = require("./apiLogic");
+const { add } = require("./src/api/apiLogic");
 
 const server = http.createServer((req, res) => {
   if (req.url === "/api/add" && req.method === "GET") {
@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
 
   // index.html を返す
   if (req.url === "/" || req.url === "/index.html") {
-    const filePath = path.join(__dirname, "index.html");
+    const filePath = path.join(__dirname, "public/index.html");
     fs.readFile(filePath, (err, data) => {
       if (err) {
         res.writeHead(500);

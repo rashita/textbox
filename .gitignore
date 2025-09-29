@@ -1,0 +1,10 @@
+#.gitignore
+
+textbox_node.code-workspace
+
+local/data/**
+!/data/sample.md
+#サンプル用のファイルは同期対象にしておく
+
+local/json/**
+.DS_Store
