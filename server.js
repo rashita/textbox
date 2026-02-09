@@ -5,10 +5,41 @@ const { add } = require("./src/api/apiLogic");
 
 const fsp = fs.promises;
 const NOTES_BASE_DIR = path.join(__dirname, "local/notes");
+const MAX_BODY_BYTES = 1024 * 1024;
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, { "Content-Type": "application/json" });
   res.end(JSON.stringify(payload));
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(Object.assign(new Error("Payload too large"), { code: "ETOOLARGE" }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      if (!chunks.length) {
+        resolve({});
+        return;
+      }
+      try {
+        const raw = Buffer.concat(chunks).toString("utf8");
+        resolve(JSON.parse(raw));
+      } catch (err) {
+        err.code = "EBADJSON";
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
 }
 
 function safeResolveNotePath(noteId) {
@@ -137,6 +168,124 @@ const server = http.createServer((req, res) => {
         }
         throw err;
       }
+    }
+
+    if ((pathname === "/api/notes" || pathname === "/api/notes/") && req.method === "POST") {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        if (err.code === "ETOOLARGE") {
+          sendJson(res, 413, { error: "Payload too large." });
+          return;
+        }
+        if (err.code === "EBADJSON") {
+          sendJson(res, 400, { error: "Invalid JSON." });
+          return;
+        }
+        throw err;
+      }
+
+      const noteId = typeof body.id === "string" ? body.id.trim() : "";
+      const content = typeof body.content === "string" ? body.content : "";
+      if (!noteId) {
+        sendJson(res, 400, { error: "Missing note id." });
+        return;
+      }
+
+      const resolved = safeResolveNotePath(noteId);
+      if (!resolved) {
+        sendJson(res, 400, { error: "Invalid note path." });
+        return;
+      }
+
+      if (path.extname(resolved).toLowerCase() !== ".md") {
+        sendJson(res, 400, { error: "Only .md files are allowed." });
+        return;
+      }
+
+      await fsp.mkdir(path.dirname(resolved), { recursive: true });
+      try {
+        await fsp.writeFile(resolved, content, { encoding: "utf8", flag: "wx" });
+      } catch (err) {
+        if (err.code === "EEXIST") {
+          sendJson(res, 409, { error: "Note already exists." });
+          return;
+        }
+        throw err;
+      }
+
+      const stat = await fsp.stat(resolved);
+      const relPath = path
+        .relative(path.resolve(NOTES_BASE_DIR), resolved)
+        .split(path.sep)
+        .join("/");
+
+      sendJson(res, 201, {
+        id: relPath,
+        path: relPath,
+        updatedAt: stat.mtimeMs,
+      });
+      return;
+    }
+
+    if (pathname.startsWith("/api/notes/") && req.method === "PUT") {
+      const noteId = pathname.slice("/api/notes/".length);
+      if (!noteId) {
+        sendJson(res, 400, { error: "Missing note id." });
+        return;
+      }
+
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        if (err.code === "ETOOLARGE") {
+          sendJson(res, 413, { error: "Payload too large." });
+          return;
+        }
+        if (err.code === "EBADJSON") {
+          sendJson(res, 400, { error: "Invalid JSON." });
+          return;
+        }
+        throw err;
+      }
+
+      const content = typeof body.content === "string" ? body.content : "";
+      const resolved = safeResolveNotePath(noteId);
+      if (!resolved) {
+        sendJson(res, 400, { error: "Invalid note path." });
+        return;
+      }
+
+      if (path.extname(resolved).toLowerCase() !== ".md") {
+        sendJson(res, 400, { error: "Only .md files are allowed." });
+        return;
+      }
+
+      try {
+        await fsp.access(resolved, fs.constants.F_OK);
+      } catch (err) {
+        if (err.code === "ENOENT") {
+          sendJson(res, 404, { error: "Note not found." });
+          return;
+        }
+        throw err;
+      }
+
+      await fsp.writeFile(resolved, content, "utf8");
+      const stat = await fsp.stat(resolved);
+      const relPath = path
+        .relative(path.resolve(NOTES_BASE_DIR), resolved)
+        .split(path.sep)
+        .join("/");
+
+      sendJson(res, 200, {
+        id: relPath,
+        path: relPath,
+        updatedAt: stat.mtimeMs,
+      });
+      return;
     }
 
     // index.html を返す

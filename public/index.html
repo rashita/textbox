@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Textbox Node</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
+        background: #f4f1ea;
+        color: #2b2520;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top left, #fff7e6, #f4f1ea 55%, #e8e2d6 100%);
+      }
+
+      header {
+        padding: 32px 24px 16px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.6;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 3fr;
+        gap: 24px;
+        padding: 24px;
+      }
+
+      .panel {
+        background: #fffaf2;
+        border: 1px solid #e2d7c6;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 12px 30px rgba(67, 55, 41, 0.08);
+      }
+
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .panel-header h2 {
+        margin: 0;
+      }
+
+      .panel-header button {
+        border: none;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font: inherit;
+        cursor: pointer;
+        background: #2b2520;
+        color: #fffaf2;
+      }
+
+      .panel ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .panel button {
+        width: 100%;
+        border: none;
+        background: transparent;
+        text-align: left;
+        padding: 8px 4px;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .panel button:hover {
+        background: rgba(226, 215, 198, 0.4);
+        border-radius: 6px;
+      }
+
+      .panel button[aria-current="true"] {
+        background: #efe6d9;
+        border-radius: 6px;
+        font-weight: 600;
+      }
+
+      .panel li {
+        padding: 8px 0;
+        border-bottom: 1px solid #efe6d9;
+      }
+
+      .panel li:last-child {
+        border-bottom: none;
+      }
+
+      .empty {
+        color: #7a6d60;
+        font-size: 14px;
+      }
+
+      .editor {
+        display: grid;
+        gap: 12px;
+      }
+
+      .editor textarea {
+        width: 100%;
+        min-height: 240px;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #e2d7c6;
+        background: #fffdf8;
+        font: inherit;
+        line-height: 1.6;
+        resize: vertical;
+      }
+
+      .editor input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        background: rgba(255, 253, 248, 0.6);
+        font: inherit;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .editor input[type="text"]:hover {
+        border-color: #e2d7c6;
+      }
+
+      .editor input[type="text"]:focus {
+        outline: none;
+        border-color: #cdbca6;
+        background: #fffdf8;
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .editor-actions button {
+        border: none;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font: inherit;
+        cursor: pointer;
+        background: #2b2520;
+        color: #fffaf2;
+      }
+
+      .status {
+        font-size: 13px;
+        color: #7a6d60;
+      }
+
+      footer {
+        padding: 0 24px 24px;
+        font-size: 12px;
+        color: #7a6d60;
+      }
+
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Textbox Node</h1>
+      <p>ローカルの Markdown を閲覧・編集するための試作UI。</p>
+    </header>
+
+    <main>
+      <section class="panel" aria-label="ノート一覧">
+        <div class="panel-header">
+          <h2>Notes</h2>
+          <button id="new-note" type="button">+ 新規作成</button>
+        </div>
+        <ul id="notes-list">
+          <li class="empty">まだノートがありません。</li>
+        </ul>
+      </section>
+
+      <section class="panel" aria-label="本文ビュー">
+        <h2>Editor</h2>
+        <div class="editor">
+          <label>
+            <span class="status">新規作成: ファイル名（例: new-note.md）</span>
+            <input id="new-note-id" type="text" placeholder="new-note.md" />
+          </label>
+          <textarea id="note-editor" placeholder="ここにMarkdownを書きます。"></textarea>
+          <div class="editor-actions">
+            <button id="save-note" type="button">保存</button>
+            <span id="status" class="status"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Draft UI. Components will be added later.</span>
+    </footer>
+
+    <script>
+      const notesList = document.getElementById("notes-list");
+      const editor = document.getElementById("note-editor");
+      const status = document.getElementById("status");
+      const saveButton = document.getElementById("save-note");
+      const newNoteIdInput = document.getElementById("new-note-id");
+      const newNoteButton = document.getElementById("new-note");
+      let currentNoteId = null;
+      let isCreating = false;
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function setModeCreating() {
+        isCreating = true;
+        currentNoteId = null;
+        editor.value = "";
+        newNoteIdInput.value = "";
+        saveButton.textContent = "作成";
+        setStatus("新規ノート作成中");
+        newNoteIdInput.focus();
+      }
+
+      function setModeEditing(notePath) {
+        isCreating = false;
+        saveButton.textContent = "保存";
+        if (notePath) {
+          setStatus(`読み込み済み: ${notePath}`);
+        }
+      }
+
+      function clearList() {
+        while (notesList.firstChild) {
+          notesList.removeChild(notesList.firstChild);
+        }
+      }
+
+      function renderList(notes) {
+        clearList();
+
+        if (!notes.length) {
+          const li = document.createElement("li");
+          li.className = "empty";
+          li.textContent = "まだノートがありません。";
+          notesList.appendChild(li);
+          return;
+        }
+
+        notes.forEach((note, index) => {
+          const li = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = note.title || note.path;
+          button.dataset.noteId = note.id;
+          if (index === 0) {
+            button.setAttribute("aria-current", "true");
+          }
+          button.addEventListener("click", async () => {
+            const current = notesList.querySelector("button[aria-current='true']");
+            if (current) current.removeAttribute("aria-current");
+            button.setAttribute("aria-current", "true");
+            await loadNote(note.id);
+          });
+          li.appendChild(button);
+          notesList.appendChild(li);
+        });
+      }
+
+      async function loadNotes() {
+        try {
+          const res = await fetch("/api/notes");
+          if (!res.ok) throw new Error("Failed to load notes list");
+          const data = await res.json();
+          const notes = Array.isArray(data.notes) ? data.notes : [];
+          renderList(notes);
+          if (notes.length) {
+            await loadNote(notes[0].id);
+          } else {
+            currentNoteId = null;
+            editor.value = "";
+            saveButton.textContent = "保存";
+            setStatus("まだノートがありません。");
+          }
+        } catch (err) {
+          console.error(err);
+          clearList();
+          const li = document.createElement("li");
+          li.className = "empty";
+          li.textContent = "一覧の取得に失敗しました。";
+          notesList.appendChild(li);
+          currentNoteId = null;
+          editor.value = "";
+          saveButton.textContent = "保存";
+          setStatus("一覧の取得に失敗しました。");
+        }
+      }
+
+      async function loadNote(noteId) {
+        try {
+          const res = await fetch(`/api/notes/${encodeURIComponent(noteId)}`);
+          if (!res.ok) throw new Error("Failed to load note");
+          const data = await res.json();
+          currentNoteId = data.id;
+          editor.value = data.content || "";
+          newNoteIdInput.value = data.path || "";
+          setModeEditing(data.path);
+        } catch (err) {
+          console.error(err);
+          setStatus("ノートの取得に失敗しました。");
+        }
+      }
+
+      async function saveNote() {
+        if (isCreating) {
+          await createNote();
+          return;
+        }
+        if (!currentNoteId) {
+          setStatus("保存するノートを選んでください。");
+          return;
+        }
+        try {
+          const res = await fetch(`/api/notes/${encodeURIComponent(currentNoteId)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: editor.value }),
+          });
+          if (!res.ok) throw new Error("Failed to save note");
+          const data = await res.json();
+          setStatus(`保存しました: ${data.path}`);
+          await loadNotes();
+        } catch (err) {
+          console.error(err);
+          setStatus("保存に失敗しました。");
+        }
+      }
+
+      async function createNote() {
+        const noteId = newNoteIdInput.value.trim();
+        if (!noteId) {
+          setStatus("新規作成のファイル名を入力してください。");
+          return;
+        }
+        if (!noteId.endsWith(".md")) {
+          setStatus("拡張子 .md を付けてください。");
+          return;
+        }
+        try {
+          const res = await fetch("/api/notes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: noteId, content: editor.value }),
+          });
+          if (!res.ok) throw new Error("Failed to create note");
+          const data = await res.json();
+          newNoteIdInput.value = "";
+          await loadNotes();
+          await loadNote(data.id);
+          setModeEditing(data.path);
+        } catch (err) {
+          console.error(err);
+          setStatus("新規作成に失敗しました。");
+        }
+      }
+
+      saveButton.addEventListener("click", saveNote);
+      newNoteButton.addEventListener("click", setModeCreating);
+
+      loadNotes();
+    </script>
+  </body>
+</html>

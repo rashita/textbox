@@ -1,0 +1,59 @@
+作業記録 (2026-02-09)
+
+概要
+- ローカルの Markdown ノートを閲覧・編集するための Node.js サーバーと簡易UIを整備。
+- 依存ライブラリを増やさず、最小構成で CRUD の入口まで実装。
+
+実施内容
+1. サーバー側 API 追加
+- ノート一覧取得: GET /api/notes
+  - local/notes 以下の .md を再帰的に列挙
+  - id/path/title/updatedAt を返却
+- ノート取得: GET /api/notes/:id
+  - .md のみ許可
+  - パス外参照を防止
+- 新規作成: POST /api/notes
+  - body: { id, content }
+  - 既存ファイルは 409
+- 保存: PUT /api/notes/:id
+  - body: { content }
+- 追加の保護
+  - 最大ボディサイズ 1MB
+  - 不正 JSON / パス / 拡張子のバリデーション
+
+2. フロント (public/index.html)
+- ノート一覧の取得と表示
+- クリックでノート内容をエディタに表示
+- 保存 / 新規作成の動線を整理
+  - 新規作成ボタンを Notes 側に移動
+  - 作成モード時は保存ボタンが「作成」に切り替わる
+- ファイル名入力欄
+  - 既存ノートを開いたときはそのパスを表示
+  - 新規作成時は空欄
+  - 目立ちすぎないよう背景を馴染ませるスタイルに調整
+
+3. サンプルノート作成
+- local/notes/inbox.md
+- local/notes/todo.md
+
+作成/変更ファイル
+- /Users/Tadanori/Library/CloudStorage/Dropbox/textbox_node/server.js
+- /Users/Tadanori/Library/CloudStorage/Dropbox/textbox_node/public/index.html
+- /Users/Tadanori/Library/CloudStorage/Dropbox/textbox_node/local/notes/inbox.md
+- /Users/Tadanori/Library/CloudStorage/Dropbox/textbox_node/local/notes/todo.md
+
+Git 操作
+- server.js の変更をコミット
+  - commit: Add read-only notes API
+- push 済み
+
+現状の動作確認手順
+1. node server.js
+2. http://localhost:3000/ にアクセス
+3. 左の Notes から選択 → 右のエディタで編集 → 保存
+4. Notes の「+ 新規作成」→ ファイル名入力 → 作成
+
+次の検討事項
+- Markdown プレビューの追加
+- UI での編集状態（未保存の表示など）
+- 静的ファイル配信の拡張（public 配下全体）
